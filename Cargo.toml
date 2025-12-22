@@ -1,0 +1,24 @@
+[package]
+name = "revelation-songbook"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+db = ["dep:sqlx", "dep:masterror", "dep:tracing", "dep:chrono", "revelation-shared/db"]
+
+[dependencies]
+revelation-shared = { git = "https://github.com/Revelation-Path/revelation-shared.git" }
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+
+# Optional DB dependencies
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono"], optional = true }
+chrono = { version = "0.4", features = ["serde"], optional = true }
+masterror = { version = "0.26", optional = true }
+tracing = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
