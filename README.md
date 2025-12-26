@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 Revelation Team
+
+SPDX-License-Identifier: MIT
+-->
+
 # revelation-songbook
 
 Songbook domain with ChordPro parser for the Revelation project.

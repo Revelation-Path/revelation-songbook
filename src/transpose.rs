@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 //! Chord transposition logic
 //!
 //! Transposes chords in ChordPro content by a given number of semitones.

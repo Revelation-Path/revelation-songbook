@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 {
   "db_name": "PostgreSQL",
   "query": "\n            SELECT\n                p.id,\n                p.user_id,\n                p.church_id,\n                p.name,\n                p.description,\n                p.is_public,\n                p.event_date,\n                (SELECT COUNT(*) FROM song_playlist_items WHERE playlist_id = p.id)::int as \"songs_count!\",\n                p.created_at,\n                p.updated_at\n            FROM song_playlists p\n            WHERE p.id = $1 AND (p.user_id = $2 OR p.is_public = true)\n            ",

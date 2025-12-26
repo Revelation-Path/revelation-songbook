@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 {
   "db_name": "PostgreSQL",
   "query": "\n            SELECT id, songbook_id, edition_name, year_published, songs_count, publisher, isbn, notes\n            FROM songbook_editions\n            WHERE songbook_id = $1\n            ORDER BY year_published DESC\n            ",

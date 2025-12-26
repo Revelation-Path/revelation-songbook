@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 {
   "db_name": "PostgreSQL",
   "query": "\n            SELECT id, name, name_ru, usage_count\n            FROM song_tags\n            ORDER BY usage_count DESC, name_ru\n            ",

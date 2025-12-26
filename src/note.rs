@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 /// Musical note (for transposition)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Note {

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 //! ChordPro format parser
 //!
 //! Parses ChordPro format songs into structured data.

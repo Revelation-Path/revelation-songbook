@@ -1,10 +1,16 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 use serde::{Deserialize, Serialize};
 
 /// Song category enum matching database type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "db", derive(sqlx::Type))]
-#[cfg_attr(feature = "db", sqlx(type_name = "song_category", rename_all = "snake_case"))]
+#[cfg_attr(
+    feature = "db",
+    sqlx(type_name = "song_category", rename_all = "snake_case")
+)]
 #[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub enum SongCategory {
     Praise,

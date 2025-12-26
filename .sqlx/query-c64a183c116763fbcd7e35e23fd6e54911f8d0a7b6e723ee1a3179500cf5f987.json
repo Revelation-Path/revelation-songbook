@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 {
   "db_name": "PostgreSQL",
   "query": "\n            SELECT t.id, t.name, t.name_ru, t.usage_count\n            FROM song_tags t\n            JOIN song_tag_assignments sta ON t.id = sta.tag_id\n            WHERE sta.song_id = $1\n            ",

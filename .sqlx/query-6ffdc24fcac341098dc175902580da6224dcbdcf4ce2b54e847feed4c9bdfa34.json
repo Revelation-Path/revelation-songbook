@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 {
   "db_name": "PostgreSQL",
   "query": "\n            SELECT\n                sb.id, sb.code, sb.name, sb.name_ru, sb.description, sb.cover_url,\n                sb.songs_count,\n                COALESCE((SELECT COUNT(*) FROM songs s WHERE s.songbook_id = sb.id AND s.has_chords = true), 0)::int as \"songs_with_chords_count!\",\n                sb.is_public,\n                sb.year_first_published, sb.year_latest_edition, sb.edition_name, sb.total_songs_in_print,\n                sb.publisher, sb.editor, sb.isbn, sb.language, sb.country, sb.denomination,\n                sb.website_url, sb.purchase_url, sb.history, sb.notes\n            FROM songbooks sb\n            WHERE sb.code = $1\n            ",
