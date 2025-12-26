@@ -55,3 +55,22 @@ impl SongSectionType {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_section_type_name_ru() {
+        assert_eq!(SongSectionType::Verse.name_ru(), "Куплет");
+        assert_eq!(SongSectionType::Chorus.name_ru(), "Припев");
+        assert_eq!(SongSectionType::Bridge.name_ru(), "Бридж");
+        assert_eq!(SongSectionType::PreChorus.name_ru(), "Предприпев");
+        assert_eq!(SongSectionType::Intro.name_ru(), "Вступление");
+        assert_eq!(SongSectionType::Outro.name_ru(), "Окончание");
+        assert_eq!(SongSectionType::Interlude.name_ru(), "Проигрыш");
+        assert_eq!(SongSectionType::Tag.name_ru(), "Тег");
+        assert_eq!(SongSectionType::Ending.name_ru(), "Кода");
+        assert_eq!(SongSectionType::Other.name_ru(), "");
+    }
+}

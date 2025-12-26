@@ -347,4 +347,212 @@ Was [G]blind but [C]now I [G]see
         assert_eq!(chord.quality, "m7");
         assert_eq!(chord.bass, Some("C#".to_string()));
     }
+
+    #[test]
+    fn test_extract_title() {
+        let content = "{title: My Song}\n[Am]Hello";
+        assert_eq!(
+            ChordProParser::extract_title(content),
+            Some("My Song".to_string())
+        );
+
+        let content = "{t: Short Title}";
+        assert_eq!(
+            ChordProParser::extract_title(content),
+            Some("Short Title".to_string())
+        );
+
+        let content = "[Am]No title here";
+        assert!(ChordProParser::extract_title(content).is_none());
+    }
+
+    #[test]
+    fn test_extract_key() {
+        let content = "{key: Am}\n[Am]Hello";
+        assert_eq!(ChordProParser::extract_key(content), Some("Am".to_string()));
+
+        let content = "[Am]No key here";
+        assert!(ChordProParser::extract_key(content).is_none());
+    }
+
+    #[test]
+    fn test_parse_all_directives() {
+        let content = r#"
+{title: Test}
+{subtitle: Subtitle}
+{artist: Artist Name}
+{composer: Composer Name}
+{key: Am}
+{tempo: 120}
+{time: 4/4}
+{capo: 2}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.title, Some("Test".to_string()));
+        assert_eq!(song.subtitle, Some("Subtitle".to_string()));
+        assert_eq!(song.artist, Some("Artist Name".to_string()));
+        assert_eq!(song.composer, Some("Composer Name".to_string()));
+        assert_eq!(song.key, Some("Am".to_string()));
+        assert_eq!(song.tempo, Some(120));
+        assert_eq!(song.time_signature, Some("4/4".to_string()));
+        assert_eq!(song.capo, Some(2));
+    }
+
+    #[test]
+    fn test_parse_short_directives() {
+        let content = "{t: Title}\n{st: Sub}\n{a: Artist}";
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.title, Some("Title".to_string()));
+        assert_eq!(song.subtitle, Some("Sub".to_string()));
+        assert_eq!(song.artist, Some("Artist".to_string()));
+    }
+
+    #[test]
+    fn test_parse_comment_directive() {
+        let content = r#"
+{start_of_verse}
+[Am]First line
+{c: This is a comment}
+{comment: Another comment}
+{end_of_verse}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections.len(), 1);
+        assert_eq!(song.sections[0].lines.len(), 3);
+        assert_eq!(song.sections[0].lines[1].text, "This is a comment");
+        assert_eq!(song.sections[0].lines[2].text, "Another comment");
+    }
+
+    #[test]
+    fn test_parse_section_types() {
+        let content = r#"
+{start_of_chorus}
+Chorus line
+{end_of_chorus}
+{start_of_bridge}
+Bridge line
+{end_of_bridge}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections.len(), 2);
+        assert_eq!(song.sections[0].section_type, SongSectionType::Chorus);
+        assert_eq!(song.sections[1].section_type, SongSectionType::Bridge);
+    }
+
+    #[test]
+    fn test_parse_without_section_markers() {
+        let content = "[Am]Just some [G]chords";
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections.len(), 1);
+        assert_eq!(song.sections[0].section_type, SongSectionType::Verse);
+    }
+
+    #[test]
+    fn test_parse_empty_lines() {
+        let content = r#"
+{start_of_verse}
+First line
+
+Second line
+{end_of_verse}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections[0].lines.len(), 3);
+        assert!(song.sections[0].lines[1].text.is_empty());
+    }
+
+    #[test]
+    fn test_strip_chords_with_comment() {
+        let content = "{c: Comment text}\n[Am]Hello";
+        let plain = ChordProParser::strip_chords(content);
+        assert_eq!(plain, "Comment text\nHello");
+    }
+
+    #[test]
+    fn test_parse_invalid_tempo() {
+        let content = "{tempo: not_a_number}";
+        let song = ChordProParser::parse(content);
+        assert!(song.tempo.is_none());
+    }
+
+    #[test]
+    fn test_parse_invalid_capo() {
+        let content = "{capo: abc}";
+        let song = ChordProParser::parse(content);
+        assert!(song.capo.is_none());
+    }
+
+    #[test]
+    fn test_section_type_parsing() {
+        assert_eq!(
+            ChordProParser::parse_section_type("verse"),
+            SongSectionType::Verse
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("v"),
+            SongSectionType::Verse
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("chorus"),
+            SongSectionType::Chorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("c"),
+            SongSectionType::Chorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("bridge"),
+            SongSectionType::Bridge
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("b"),
+            SongSectionType::Bridge
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("prechorus"),
+            SongSectionType::PreChorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("pre-chorus"),
+            SongSectionType::PreChorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("pc"),
+            SongSectionType::PreChorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("intro"),
+            SongSectionType::Intro
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("outro"),
+            SongSectionType::Outro
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("interlude"),
+            SongSectionType::Interlude
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("tag"),
+            SongSectionType::Tag
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("ending"),
+            SongSectionType::Ending
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("coda"),
+            SongSectionType::Ending
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("unknown"),
+            SongSectionType::Other
+        );
+    }
+
+    #[test]
+    fn test_extract_first_line_empty() {
+        let content = "{title: Test}\n{key: Am}";
+        assert_eq!(ChordProParser::extract_first_line(content), "");
+    }
 }

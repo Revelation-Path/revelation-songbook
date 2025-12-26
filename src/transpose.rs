@@ -218,4 +218,116 @@ mod tests {
         assert_eq!(semitones_between("G", "C"), Some(5));
         assert_eq!(semitones_between("A", "A"), Some(0));
     }
+
+    #[test]
+    fn test_transpose_zero_semitones() {
+        let content = "[C]Hello [G]world";
+        let transposed = transpose_content(content, 0);
+        assert_eq!(transposed, "[C]Hello [G]world");
+    }
+
+    #[test]
+    fn test_transpose_with_flats() {
+        let content = "{key: Bb}\n[Bb]Hello [Eb]world";
+        let transposed = transpose_content(content, 2);
+        assert!(transposed.contains("[C]Hello"));
+        assert!(transposed.contains("[F]world"));
+    }
+
+    #[test]
+    fn test_transpose_empty_chord() {
+        let result = transpose_chord("", 2, false);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_transpose_empty_note() {
+        let result = transpose_note_in_string("", 2, false);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_transpose_invalid_chord() {
+        let result = transpose_chord("XYZ", 2, false);
+        assert_eq!(result, "XYZ");
+    }
+
+    #[test]
+    fn test_transpose_key_function() {
+        let result = transpose_key("C", 2, false);
+        assert_eq!(result, "D");
+
+        let result = transpose_key("Am", 2, false);
+        assert_eq!(result, "Bm");
+    }
+
+    #[test]
+    fn test_should_use_flats_with_flat_key() {
+        let content = "{key: Bb}\n[Bb]Test";
+        assert!(should_use_flats(content, 1));
+    }
+
+    #[test]
+    fn test_should_use_flats_without_key() {
+        let content = "[C]Test";
+        assert!(!should_use_flats(content, 1));
+    }
+
+    #[test]
+    fn test_should_use_flats_transposed_to_flat_note() {
+        let content = "{key: C}\n[C]Test";
+        assert!(should_use_flats(content, 3));
+    }
+
+    #[test]
+    fn test_semitones_between_invalid() {
+        assert!(semitones_between("X", "C").is_none());
+        assert!(semitones_between("C", "X").is_none());
+    }
+
+    #[test]
+    fn test_common_keys() {
+        assert!(COMMON_KEYS.contains(&"C"));
+        assert!(COMMON_KEYS.contains(&"Am"));
+        assert!(COMMON_KEYS.contains(&"F#"));
+        assert!(COMMON_KEYS.contains(&"Bb"));
+    }
+
+    #[test]
+    fn test_transpose_sharp_chords() {
+        let content = "[C#]Hello [F#]world";
+        let transposed = transpose_content(content, 2);
+        assert_eq!(transposed, "[D#]Hello [G#]world");
+    }
+
+    #[test]
+    fn test_transpose_slash_with_quality() {
+        let content = "[Am7/G]Test";
+        let transposed = transpose_content(content, 2);
+        assert_eq!(transposed, "[Bm7/A]Test");
+    }
+
+    #[test]
+    fn test_transpose_single_chord_empty() {
+        let result = transpose_single_chord("", 2, false);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_transpose_single_chord_invalid() {
+        let result = transpose_single_chord("123", 2, false);
+        assert_eq!(result, "123");
+    }
+
+    #[test]
+    fn test_transpose_note_in_string_invalid() {
+        let result = transpose_note_in_string("XYZ", 2, false);
+        assert_eq!(result, "XYZ");
+    }
+
+    #[test]
+    fn test_transpose_note_in_string_with_suffix() {
+        let result = transpose_note_in_string("C#m", 2, false);
+        assert_eq!(result, "D#m");
+    }
 }

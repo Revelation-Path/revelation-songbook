@@ -139,3 +139,139 @@ impl Note {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_natural_notes() {
+        assert_eq!(Note::parse("C").unwrap().0, Note::C);
+        assert_eq!(Note::parse("D").unwrap().0, Note::D);
+        assert_eq!(Note::parse("E").unwrap().0, Note::E);
+        assert_eq!(Note::parse("F").unwrap().0, Note::F);
+        assert_eq!(Note::parse("G").unwrap().0, Note::G);
+        assert_eq!(Note::parse("A").unwrap().0, Note::A);
+        assert_eq!(Note::parse("B").unwrap().0, Note::B);
+        assert_eq!(Note::parse("H").unwrap().0, Note::B);
+    }
+
+    #[test]
+    fn test_parse_sharp_notes() {
+        assert_eq!(Note::parse("C#").unwrap().0, Note::CSharp);
+        assert_eq!(Note::parse("D#").unwrap().0, Note::DSharp);
+        assert_eq!(Note::parse("E#").unwrap().0, Note::F);
+        assert_eq!(Note::parse("F#").unwrap().0, Note::FSharp);
+        assert_eq!(Note::parse("G#").unwrap().0, Note::GSharp);
+        assert_eq!(Note::parse("A#").unwrap().0, Note::ASharp);
+        assert_eq!(Note::parse("B#").unwrap().0, Note::C);
+    }
+
+    #[test]
+    fn test_parse_flat_notes() {
+        let (note, is_flat) = Note::parse("Cb").unwrap();
+        assert_eq!(note, Note::B);
+        assert!(is_flat);
+
+        let (note, is_flat) = Note::parse("Db").unwrap();
+        assert_eq!(note, Note::CSharp);
+        assert!(is_flat);
+
+        let (note, is_flat) = Note::parse("Eb").unwrap();
+        assert_eq!(note, Note::DSharp);
+        assert!(is_flat);
+
+        let (note, is_flat) = Note::parse("Fb").unwrap();
+        assert_eq!(note, Note::E);
+        assert!(is_flat);
+
+        let (note, is_flat) = Note::parse("Gb").unwrap();
+        assert_eq!(note, Note::FSharp);
+        assert!(is_flat);
+
+        let (note, is_flat) = Note::parse("Ab").unwrap();
+        assert_eq!(note, Note::GSharp);
+        assert!(is_flat);
+
+        let (note, is_flat) = Note::parse("Bb").unwrap();
+        assert_eq!(note, Note::ASharp);
+        assert!(is_flat);
+    }
+
+    #[test]
+    fn test_parse_lowercase() {
+        assert_eq!(Note::parse("c").unwrap().0, Note::C);
+        assert_eq!(Note::parse("c#").unwrap().0, Note::CSharp);
+    }
+
+    #[test]
+    fn test_parse_invalid() {
+        assert!(Note::parse("").is_none());
+        assert!(Note::parse("X").is_none());
+        assert!(Note::parse("1").is_none());
+    }
+
+    #[test]
+    fn test_to_semitone() {
+        assert_eq!(Note::C.to_semitone(), 0);
+        assert_eq!(Note::CSharp.to_semitone(), 1);
+        assert_eq!(Note::D.to_semitone(), 2);
+        assert_eq!(Note::DSharp.to_semitone(), 3);
+        assert_eq!(Note::E.to_semitone(), 4);
+        assert_eq!(Note::F.to_semitone(), 5);
+        assert_eq!(Note::FSharp.to_semitone(), 6);
+        assert_eq!(Note::G.to_semitone(), 7);
+        assert_eq!(Note::GSharp.to_semitone(), 8);
+        assert_eq!(Note::A.to_semitone(), 9);
+        assert_eq!(Note::ASharp.to_semitone(), 10);
+        assert_eq!(Note::B.to_semitone(), 11);
+    }
+
+    #[test]
+    fn test_from_semitone() {
+        assert_eq!(Note::from_semitone(0), Note::C);
+        assert_eq!(Note::from_semitone(1), Note::CSharp);
+        assert_eq!(Note::from_semitone(12), Note::C);
+        assert_eq!(Note::from_semitone(13), Note::CSharp);
+    }
+
+    #[test]
+    fn test_transpose() {
+        assert_eq!(Note::C.transpose(2), Note::D);
+        assert_eq!(Note::C.transpose(-2), Note::ASharp);
+        assert_eq!(Note::B.transpose(1), Note::C);
+        assert_eq!(Note::C.transpose(12), Note::C);
+    }
+
+    #[test]
+    fn test_to_sharp_string() {
+        assert_eq!(Note::C.to_sharp_string(), "C");
+        assert_eq!(Note::CSharp.to_sharp_string(), "C#");
+        assert_eq!(Note::D.to_sharp_string(), "D");
+        assert_eq!(Note::DSharp.to_sharp_string(), "D#");
+        assert_eq!(Note::E.to_sharp_string(), "E");
+        assert_eq!(Note::F.to_sharp_string(), "F");
+        assert_eq!(Note::FSharp.to_sharp_string(), "F#");
+        assert_eq!(Note::G.to_sharp_string(), "G");
+        assert_eq!(Note::GSharp.to_sharp_string(), "G#");
+        assert_eq!(Note::A.to_sharp_string(), "A");
+        assert_eq!(Note::ASharp.to_sharp_string(), "A#");
+        assert_eq!(Note::B.to_sharp_string(), "B");
+    }
+
+    #[test]
+    fn test_to_flat_string() {
+        assert_eq!(Note::C.to_flat_string(), "C");
+        assert_eq!(Note::CSharp.to_flat_string(), "Db");
+        assert_eq!(Note::D.to_flat_string(), "D");
+        assert_eq!(Note::DSharp.to_flat_string(), "Eb");
+        assert_eq!(Note::E.to_flat_string(), "E");
+        assert_eq!(Note::F.to_flat_string(), "F");
+        assert_eq!(Note::FSharp.to_flat_string(), "Gb");
+        assert_eq!(Note::G.to_flat_string(), "G");
+        assert_eq!(Note::GSharp.to_flat_string(), "Ab");
+        assert_eq!(Note::A.to_flat_string(), "A");
+        assert_eq!(Note::ASharp.to_flat_string(), "Bb");
+        assert_eq!(Note::B.to_flat_string(), "B");
+    }
+}
