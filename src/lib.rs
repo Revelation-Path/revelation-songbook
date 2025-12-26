@@ -1,12 +1,37 @@
-//! Songbook module: ChordPro parsing, transposition, and song repository
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
 
+mod category;
+mod chord;
+mod edition;
+mod entity;
+mod filters;
+mod history;
+mod note;
+mod parsed;
 mod parser;
+mod playlist;
+mod search;
+mod section;
+mod song;
+mod tag;
 mod transpose;
 
-#[cfg(feature = "db")]
-mod repository;
+#[cfg(feature = "backend")]
+pub mod ports;
 
-pub use parser::ChordProParser;
-#[cfg(feature = "db")]
-pub use repository::SongRepository;
-pub use transpose::{COMMON_KEYS, semitones_between, transpose_content, transpose_key};
+pub use category::*;
+pub use chord::*;
+pub use edition::*;
+pub use entity::*;
+pub use filters::*;
+pub use history::*;
+pub use note::*;
+pub use parsed::*;
+pub use parser::*;
+pub use playlist::*;
+pub use search::*;
+pub use section::*;
+pub use song::*;
+pub use tag::*;
+pub use transpose::*;

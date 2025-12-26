@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 //! ChordPro format parser
 //!
 //! Parses ChordPro format songs into structured data.
@@ -6,7 +9,8 @@
 use std::sync::LazyLock;
 
 use regex::Regex;
-use revelation_shared::{Chord, ParsedSong, PositionedChord, SongLine, SongSection, SongSectionType};
+
+use super::{Chord, ParsedSong, PositionedChord, SongLine, SongSection, SongSectionType};
 
 /// Regex patterns for ChordPro parsing
 static DIRECTIVE_RE: LazyLock<Regex> =
@@ -48,10 +52,8 @@ impl ChordProParser {
         for line in content.lines() {
             let trimmed = line.trim();
 
-            // Skip empty lines outside sections
             if trimmed.is_empty() {
                 if let Some(ref mut section) = current_section {
-                    // Add empty line to section
                     section.lines.push(SongLine {
                         text:   String::new(),
                         chords: Vec::new()
@@ -60,9 +62,7 @@ impl ChordProParser {
                 continue;
             }
 
-            // Check for section start
             if let Some(caps) = SECTION_START_RE.captures(trimmed) {
-                // Save previous section if any
                 if let Some(section) = current_section.take()
                     && !section.lines.is_empty()
                 {
@@ -80,7 +80,6 @@ impl ChordProParser {
                 continue;
             }
 
-            // Check for section end
             if SECTION_END_RE.is_match(trimmed) {
                 if let Some(section) = current_section.take()
                     && !section.lines.is_empty()
@@ -90,7 +89,6 @@ impl ChordProParser {
                 continue;
             }
 
-            // Parse directives
             if let Some(caps) = DIRECTIVE_RE.captures(trimmed) {
                 let directive = caps[1].to_lowercase();
                 let value = caps.get(2).map(|m| m.as_str().trim().to_string());
@@ -106,9 +104,7 @@ impl ChordProParser {
                     }
                     "time" => song.time_signature = value,
                     "capo" => song.capo = value.and_then(|v| v.parse().ok()),
-                    // Section shortcuts
                     "c" | "comment" => {
-                        // Comments are displayed as-is
                         if let Some(ref mut section) = current_section
                             && let Some(text) = value
                         {
@@ -123,14 +119,11 @@ impl ChordProParser {
                 continue;
             }
 
-            // Parse line with chords
             let song_line = Self::parse_line(trimmed);
 
-            // Add to current section or create implicit verse
             if let Some(ref mut section) = current_section {
                 section.lines.push(song_line);
             } else if !song_line.text.is_empty() || !song_line.chords.is_empty() {
-                // Create implicit verse section for content outside sections
                 current_section = Some(SongSection {
                     section_type: SongSectionType::Verse,
                     label:        None,
@@ -139,7 +132,6 @@ impl ChordProParser {
             }
         }
 
-        // Save last section
         if let Some(section) = current_section
             && !section.lines.is_empty()
         {
@@ -158,10 +150,8 @@ impl ChordProParser {
         for caps in CHORD_RE.captures_iter(line) {
             let m = caps.get(0).unwrap();
 
-            // Add text before chord
             text.push_str(&line[last_end..m.start()]);
 
-            // Parse chord
             let chord_str = &caps[1];
             if let Some(chord) = Chord::parse(chord_str) {
                 chords.push(PositionedChord {
@@ -173,7 +163,6 @@ impl ChordProParser {
             last_end = m.end();
         }
 
-        // Add remaining text
         text.push_str(&line[last_end..]);
 
         SongLine {
@@ -205,9 +194,7 @@ impl ChordProParser {
         for line in content.lines() {
             let trimmed = line.trim();
 
-            // Skip directives
             if trimmed.starts_with('{') && trimmed.ends_with('}') {
-                // But keep comments as text
                 if let Some(caps) = DIRECTIVE_RE.captures(trimmed) {
                     let directive = caps[1].to_lowercase();
                     if (directive == "c" || directive == "comment")
@@ -220,7 +207,6 @@ impl ChordProParser {
                 continue;
             }
 
-            // Remove chords
             let plain = CHORD_RE.replace_all(trimmed, "");
             let plain = plain.trim();
 
@@ -238,12 +224,10 @@ impl ChordProParser {
         for line in content.lines() {
             let trimmed = line.trim();
 
-            // Skip empty lines and directives
             if trimmed.is_empty() || (trimmed.starts_with('{') && trimmed.ends_with('}')) {
                 continue;
             }
 
-            // Remove chords and return
             let plain = CHORD_RE.replace_all(trimmed, "");
             let plain = plain.trim();
 
@@ -309,13 +293,11 @@ Was [G]blind but [C]now I [G]see
         assert_eq!(song.key, Some("G".to_string()));
         assert_eq!(song.sections.len(), 2);
 
-        // Check verse
         let verse = &song.sections[0];
         assert_eq!(verse.section_type, SongSectionType::Verse);
         assert_eq!(verse.label, Some("1".to_string()));
         assert_eq!(verse.lines.len(), 2);
 
-        // Check first line chords
         let first_line = &verse.lines[0];
         assert_eq!(first_line.text, "Amazing grace, how sweet the sound");
         assert_eq!(first_line.chords.len(), 4);
@@ -364,5 +346,213 @@ Was [G]blind but [C]now I [G]see
         assert_eq!(chord.root, "F#");
         assert_eq!(chord.quality, "m7");
         assert_eq!(chord.bass, Some("C#".to_string()));
+    }
+
+    #[test]
+    fn test_extract_title() {
+        let content = "{title: My Song}\n[Am]Hello";
+        assert_eq!(
+            ChordProParser::extract_title(content),
+            Some("My Song".to_string())
+        );
+
+        let content = "{t: Short Title}";
+        assert_eq!(
+            ChordProParser::extract_title(content),
+            Some("Short Title".to_string())
+        );
+
+        let content = "[Am]No title here";
+        assert!(ChordProParser::extract_title(content).is_none());
+    }
+
+    #[test]
+    fn test_extract_key() {
+        let content = "{key: Am}\n[Am]Hello";
+        assert_eq!(ChordProParser::extract_key(content), Some("Am".to_string()));
+
+        let content = "[Am]No key here";
+        assert!(ChordProParser::extract_key(content).is_none());
+    }
+
+    #[test]
+    fn test_parse_all_directives() {
+        let content = r#"
+{title: Test}
+{subtitle: Subtitle}
+{artist: Artist Name}
+{composer: Composer Name}
+{key: Am}
+{tempo: 120}
+{time: 4/4}
+{capo: 2}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.title, Some("Test".to_string()));
+        assert_eq!(song.subtitle, Some("Subtitle".to_string()));
+        assert_eq!(song.artist, Some("Artist Name".to_string()));
+        assert_eq!(song.composer, Some("Composer Name".to_string()));
+        assert_eq!(song.key, Some("Am".to_string()));
+        assert_eq!(song.tempo, Some(120));
+        assert_eq!(song.time_signature, Some("4/4".to_string()));
+        assert_eq!(song.capo, Some(2));
+    }
+
+    #[test]
+    fn test_parse_short_directives() {
+        let content = "{t: Title}\n{st: Sub}\n{a: Artist}";
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.title, Some("Title".to_string()));
+        assert_eq!(song.subtitle, Some("Sub".to_string()));
+        assert_eq!(song.artist, Some("Artist".to_string()));
+    }
+
+    #[test]
+    fn test_parse_comment_directive() {
+        let content = r#"
+{start_of_verse}
+[Am]First line
+{c: This is a comment}
+{comment: Another comment}
+{end_of_verse}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections.len(), 1);
+        assert_eq!(song.sections[0].lines.len(), 3);
+        assert_eq!(song.sections[0].lines[1].text, "This is a comment");
+        assert_eq!(song.sections[0].lines[2].text, "Another comment");
+    }
+
+    #[test]
+    fn test_parse_section_types() {
+        let content = r#"
+{start_of_chorus}
+Chorus line
+{end_of_chorus}
+{start_of_bridge}
+Bridge line
+{end_of_bridge}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections.len(), 2);
+        assert_eq!(song.sections[0].section_type, SongSectionType::Chorus);
+        assert_eq!(song.sections[1].section_type, SongSectionType::Bridge);
+    }
+
+    #[test]
+    fn test_parse_without_section_markers() {
+        let content = "[Am]Just some [G]chords";
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections.len(), 1);
+        assert_eq!(song.sections[0].section_type, SongSectionType::Verse);
+    }
+
+    #[test]
+    fn test_parse_empty_lines() {
+        let content = r#"
+{start_of_verse}
+First line
+
+Second line
+{end_of_verse}
+"#;
+        let song = ChordProParser::parse(content);
+        assert_eq!(song.sections[0].lines.len(), 3);
+        assert!(song.sections[0].lines[1].text.is_empty());
+    }
+
+    #[test]
+    fn test_strip_chords_with_comment() {
+        let content = "{c: Comment text}\n[Am]Hello";
+        let plain = ChordProParser::strip_chords(content);
+        assert_eq!(plain, "Comment text\nHello");
+    }
+
+    #[test]
+    fn test_parse_invalid_tempo() {
+        let content = "{tempo: not_a_number}";
+        let song = ChordProParser::parse(content);
+        assert!(song.tempo.is_none());
+    }
+
+    #[test]
+    fn test_parse_invalid_capo() {
+        let content = "{capo: abc}";
+        let song = ChordProParser::parse(content);
+        assert!(song.capo.is_none());
+    }
+
+    #[test]
+    fn test_section_type_parsing() {
+        assert_eq!(
+            ChordProParser::parse_section_type("verse"),
+            SongSectionType::Verse
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("v"),
+            SongSectionType::Verse
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("chorus"),
+            SongSectionType::Chorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("c"),
+            SongSectionType::Chorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("bridge"),
+            SongSectionType::Bridge
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("b"),
+            SongSectionType::Bridge
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("prechorus"),
+            SongSectionType::PreChorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("pre-chorus"),
+            SongSectionType::PreChorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("pc"),
+            SongSectionType::PreChorus
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("intro"),
+            SongSectionType::Intro
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("outro"),
+            SongSectionType::Outro
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("interlude"),
+            SongSectionType::Interlude
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("tag"),
+            SongSectionType::Tag
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("ending"),
+            SongSectionType::Ending
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("coda"),
+            SongSectionType::Ending
+        );
+        assert_eq!(
+            ChordProParser::parse_section_type("unknown"),
+            SongSectionType::Other
+        );
+    }
+
+    #[test]
+    fn test_extract_first_line_empty() {
+        let content = "{title: Test}\n{key: Am}";
+        assert_eq!(ChordProParser::extract_first_line(content), "");
     }
 }

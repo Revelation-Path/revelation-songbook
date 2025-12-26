@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Revelation Team
+// SPDX-License-Identifier: MIT
+
 //! Chord transposition logic
 //!
 //! Transposes chords in ChordPro content by a given number of semitones.
@@ -5,7 +8,8 @@
 use std::sync::LazyLock;
 
 use regex::Regex;
-use revelation_shared::Note;
+
+use super::Note;
 
 /// Regex for matching chords in brackets
 static CHORD_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([^\]]+)\]").unwrap());
@@ -27,17 +31,14 @@ pub fn transpose_content(content: &str, semitones: i32) -> String {
         return content.to_string();
     }
 
-    // Determine if we should use flats based on target key
     let use_flats = should_use_flats(content, semitones);
 
-    // Transpose key directive if present
     let content = KEY_RE.replace(content, |caps: &regex::Captures| {
         let key = caps[1].trim();
         let transposed = transpose_key(key, semitones, use_flats);
         format!("{{key: {}}}", transposed)
     });
 
-    // Transpose all chords
     CHORD_RE
         .replace_all(&content, |caps: &regex::Captures| {
             let chord = &caps[1];
@@ -59,7 +60,6 @@ fn transpose_chord(chord: &str, semitones: i32, use_flats: bool) -> String {
         return chord.to_string();
     }
 
-    // Handle slash chords (e.g., C/G)
     if let Some(slash_pos) = chord.rfind('/') {
         let main = &chord[..slash_pos];
         let bass = &chord[slash_pos + 1..];
@@ -80,14 +80,12 @@ fn transpose_single_chord(chord: &str, semitones: i32, use_flats: bool) -> Strin
         return chord.to_string();
     }
 
-    // Find the root note (1 or 2 characters)
     let (root_len, root_str) = if chars.len() >= 2 && (chars[1] == '#' || chars[1] == 'b') {
         (2, format!("{}{}", chars[0], chars[1]))
     } else {
         (1, chars[0].to_string())
     };
 
-    // Parse and transpose the root
     if let Some((note, _)) = Note::parse(&root_str) {
         let transposed = note.transpose(semitones);
         let new_root = if use_flats {
@@ -96,11 +94,9 @@ fn transpose_single_chord(chord: &str, semitones: i32, use_flats: bool) -> Strin
             transposed.to_sharp_string()
         };
 
-        // Append the quality (everything after the root)
         let quality: String = chars[root_len..].iter().collect();
         format!("{}{}", new_root, quality)
     } else {
-        // Couldn't parse, return as-is
         chord.to_string()
     }
 }
@@ -137,25 +133,20 @@ fn transpose_note_in_string(s: &str, semitones: i32, use_flats: bool) -> String 
 
 /// Determine if we should use flat notation based on the key
 fn should_use_flats(content: &str, semitones: i32) -> bool {
-    // Try to extract the original key
     if let Some(caps) = KEY_RE.captures(content) {
         let key = caps[1].trim();
 
-        // Parse the key to get the root note
         if let Some((note, original_is_flat)) = Note::parse(key) {
             let transposed = note.transpose(semitones);
 
-            // If original used flats, try to keep using flats
             if original_is_flat {
                 return true;
             }
 
-            // Use flats for keys that typically use flats
             return matches!(transposed, Note::DSharp | Note::GSharp | Note::ASharp);
         }
     }
 
-    // Default: use sharps
     false
 }
 
@@ -190,7 +181,6 @@ mod tests {
 [Am]Second [F]line
 "#;
 
-        // Transpose up 2 semitones (C -> D)
         let transposed = transpose_content(content, 2);
 
         assert!(transposed.contains("{key: D}"));
@@ -203,29 +193,21 @@ mod tests {
     #[test]
     fn test_transpose_with_slash_chords() {
         let content = "[C/G]Hello [Am/E]world";
-
         let transposed = transpose_content(content, 2);
-
         assert_eq!(transposed, "[D/A]Hello [Bm/F#]world");
     }
 
     #[test]
     fn test_transpose_chord_qualities() {
-        // Test various chord qualities are preserved
         let content = "[Cmaj7] [Dm7] [G7sus4] [Fdim] [Eaug]";
-
         let transposed = transpose_content(content, 2);
-
         assert_eq!(transposed, "[Dmaj7] [Em7] [A7sus4] [Gdim] [F#aug]");
     }
 
     #[test]
     fn test_transpose_negative() {
         let content = "[D]Hello [A]world";
-
-        // Transpose down 2 semitones (D -> C)
         let transposed = transpose_content(content, -2);
-
         assert_eq!(transposed, "[C]Hello [G]world");
     }
 
@@ -238,24 +220,114 @@ mod tests {
     }
 
     #[test]
-    fn test_transpose_preserves_non_chord_content() {
-        let content = r#"
-{title: My Song}
-{artist: Test Artist}
+    fn test_transpose_zero_semitones() {
+        let content = "[C]Hello [G]world";
+        let transposed = transpose_content(content, 0);
+        assert_eq!(transposed, "[C]Hello [G]world");
+    }
 
-Verse 1:
-[Am]First line
-Regular text without chords
-[G]Third line
-"#;
-
+    #[test]
+    fn test_transpose_with_flats() {
+        let content = "{key: Bb}\n[Bb]Hello [Eb]world";
         let transposed = transpose_content(content, 2);
+        assert!(transposed.contains("[C]Hello"));
+        assert!(transposed.contains("[F]world"));
+    }
 
-        assert!(transposed.contains("{title: My Song}"));
-        assert!(transposed.contains("{artist: Test Artist}"));
-        assert!(transposed.contains("Verse 1:"));
-        assert!(transposed.contains("Regular text without chords"));
-        assert!(transposed.contains("[Bm]First line"));
-        assert!(transposed.contains("[A]Third line"));
+    #[test]
+    fn test_transpose_empty_chord() {
+        let result = transpose_chord("", 2, false);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_transpose_empty_note() {
+        let result = transpose_note_in_string("", 2, false);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_transpose_invalid_chord() {
+        let result = transpose_chord("XYZ", 2, false);
+        assert_eq!(result, "XYZ");
+    }
+
+    #[test]
+    fn test_transpose_key_function() {
+        let result = transpose_key("C", 2, false);
+        assert_eq!(result, "D");
+
+        let result = transpose_key("Am", 2, false);
+        assert_eq!(result, "Bm");
+    }
+
+    #[test]
+    fn test_should_use_flats_with_flat_key() {
+        let content = "{key: Bb}\n[Bb]Test";
+        assert!(should_use_flats(content, 1));
+    }
+
+    #[test]
+    fn test_should_use_flats_without_key() {
+        let content = "[C]Test";
+        assert!(!should_use_flats(content, 1));
+    }
+
+    #[test]
+    fn test_should_use_flats_transposed_to_flat_note() {
+        let content = "{key: C}\n[C]Test";
+        assert!(should_use_flats(content, 3));
+    }
+
+    #[test]
+    fn test_semitones_between_invalid() {
+        assert!(semitones_between("X", "C").is_none());
+        assert!(semitones_between("C", "X").is_none());
+    }
+
+    #[test]
+    fn test_common_keys() {
+        assert!(COMMON_KEYS.contains(&"C"));
+        assert!(COMMON_KEYS.contains(&"Am"));
+        assert!(COMMON_KEYS.contains(&"F#"));
+        assert!(COMMON_KEYS.contains(&"Bb"));
+    }
+
+    #[test]
+    fn test_transpose_sharp_chords() {
+        let content = "[C#]Hello [F#]world";
+        let transposed = transpose_content(content, 2);
+        assert_eq!(transposed, "[D#]Hello [G#]world");
+    }
+
+    #[test]
+    fn test_transpose_slash_with_quality() {
+        let content = "[Am7/G]Test";
+        let transposed = transpose_content(content, 2);
+        assert_eq!(transposed, "[Bm7/A]Test");
+    }
+
+    #[test]
+    fn test_transpose_single_chord_empty() {
+        let result = transpose_single_chord("", 2, false);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_transpose_single_chord_invalid() {
+        let result = transpose_single_chord("123", 2, false);
+        assert_eq!(result, "123");
+    }
+
+    #[test]
+    fn test_transpose_note_in_string_invalid() {
+        let result = transpose_note_in_string("XYZ", 2, false);
+        assert_eq!(result, "XYZ");
+    }
+
+    #[test]
+    fn test_transpose_note_in_string_with_suffix() {
+        let result = transpose_note_in_string("C#m", 2, false);
+        assert_eq!(result, "D#m");
     }
 }
