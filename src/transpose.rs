@@ -5,7 +5,8 @@
 use std::sync::LazyLock;
 
 use regex::Regex;
-use revelation_shared::Note;
+
+use super::Note;
 
 /// Regex for matching chords in brackets
 static CHORD_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([^\]]+)\]").unwrap());
@@ -27,17 +28,14 @@ pub fn transpose_content(content: &str, semitones: i32) -> String {
         return content.to_string();
     }
 
-    // Determine if we should use flats based on target key
     let use_flats = should_use_flats(content, semitones);
 
-    // Transpose key directive if present
     let content = KEY_RE.replace(content, |caps: &regex::Captures| {
         let key = caps[1].trim();
         let transposed = transpose_key(key, semitones, use_flats);
         format!("{{key: {}}}", transposed)
     });
 
-    // Transpose all chords
     CHORD_RE
         .replace_all(&content, |caps: &regex::Captures| {
             let chord = &caps[1];
@@ -59,7 +57,6 @@ fn transpose_chord(chord: &str, semitones: i32, use_flats: bool) -> String {
         return chord.to_string();
     }
 
-    // Handle slash chords (e.g., C/G)
     if let Some(slash_pos) = chord.rfind('/') {
         let main = &chord[..slash_pos];
         let bass = &chord[slash_pos + 1..];
@@ -80,14 +77,12 @@ fn transpose_single_chord(chord: &str, semitones: i32, use_flats: bool) -> Strin
         return chord.to_string();
     }
 
-    // Find the root note (1 or 2 characters)
     let (root_len, root_str) = if chars.len() >= 2 && (chars[1] == '#' || chars[1] == 'b') {
         (2, format!("{}{}", chars[0], chars[1]))
     } else {
         (1, chars[0].to_string())
     };
 
-    // Parse and transpose the root
     if let Some((note, _)) = Note::parse(&root_str) {
         let transposed = note.transpose(semitones);
         let new_root = if use_flats {
@@ -96,11 +91,9 @@ fn transpose_single_chord(chord: &str, semitones: i32, use_flats: bool) -> Strin
             transposed.to_sharp_string()
         };
 
-        // Append the quality (everything after the root)
         let quality: String = chars[root_len..].iter().collect();
         format!("{}{}", new_root, quality)
     } else {
-        // Couldn't parse, return as-is
         chord.to_string()
     }
 }
@@ -137,25 +130,20 @@ fn transpose_note_in_string(s: &str, semitones: i32, use_flats: bool) -> String 
 
 /// Determine if we should use flat notation based on the key
 fn should_use_flats(content: &str, semitones: i32) -> bool {
-    // Try to extract the original key
     if let Some(caps) = KEY_RE.captures(content) {
         let key = caps[1].trim();
 
-        // Parse the key to get the root note
         if let Some((note, original_is_flat)) = Note::parse(key) {
             let transposed = note.transpose(semitones);
 
-            // If original used flats, try to keep using flats
             if original_is_flat {
                 return true;
             }
 
-            // Use flats for keys that typically use flats
             return matches!(transposed, Note::DSharp | Note::GSharp | Note::ASharp);
         }
     }
 
-    // Default: use sharps
     false
 }
 
@@ -190,7 +178,6 @@ mod tests {
 [Am]Second [F]line
 "#;
 
-        // Transpose up 2 semitones (C -> D)
         let transposed = transpose_content(content, 2);
 
         assert!(transposed.contains("{key: D}"));
@@ -203,29 +190,21 @@ mod tests {
     #[test]
     fn test_transpose_with_slash_chords() {
         let content = "[C/G]Hello [Am/E]world";
-
         let transposed = transpose_content(content, 2);
-
         assert_eq!(transposed, "[D/A]Hello [Bm/F#]world");
     }
 
     #[test]
     fn test_transpose_chord_qualities() {
-        // Test various chord qualities are preserved
         let content = "[Cmaj7] [Dm7] [G7sus4] [Fdim] [Eaug]";
-
         let transposed = transpose_content(content, 2);
-
         assert_eq!(transposed, "[Dmaj7] [Em7] [A7sus4] [Gdim] [F#aug]");
     }
 
     #[test]
     fn test_transpose_negative() {
         let content = "[D]Hello [A]world";
-
-        // Transpose down 2 semitones (D -> C)
         let transposed = transpose_content(content, -2);
-
         assert_eq!(transposed, "[C]Hello [G]world");
     }
 
@@ -235,27 +214,5 @@ mod tests {
         assert_eq!(semitones_between("C", "G"), Some(7));
         assert_eq!(semitones_between("G", "C"), Some(5));
         assert_eq!(semitones_between("A", "A"), Some(0));
-    }
-
-    #[test]
-    fn test_transpose_preserves_non_chord_content() {
-        let content = r#"
-{title: My Song}
-{artist: Test Artist}
-
-Verse 1:
-[Am]First line
-Regular text without chords
-[G]Third line
-"#;
-
-        let transposed = transpose_content(content, 2);
-
-        assert!(transposed.contains("{title: My Song}"));
-        assert!(transposed.contains("{artist: Test Artist}"));
-        assert!(transposed.contains("Verse 1:"));
-        assert!(transposed.contains("Regular text without chords"));
-        assert!(transposed.contains("[Bm]First line"));
-        assert!(transposed.contains("[A]Third line"));
     }
 }

@@ -6,7 +6,8 @@
 use std::sync::LazyLock;
 
 use regex::Regex;
-use revelation_shared::{Chord, ParsedSong, PositionedChord, SongLine, SongSection, SongSectionType};
+
+use super::{Chord, ParsedSong, PositionedChord, SongLine, SongSection, SongSectionType};
 
 /// Regex patterns for ChordPro parsing
 static DIRECTIVE_RE: LazyLock<Regex> =
@@ -48,10 +49,8 @@ impl ChordProParser {
         for line in content.lines() {
             let trimmed = line.trim();
 
-            // Skip empty lines outside sections
             if trimmed.is_empty() {
                 if let Some(ref mut section) = current_section {
-                    // Add empty line to section
                     section.lines.push(SongLine {
                         text:   String::new(),
                         chords: Vec::new()
@@ -60,9 +59,7 @@ impl ChordProParser {
                 continue;
             }
 
-            // Check for section start
             if let Some(caps) = SECTION_START_RE.captures(trimmed) {
-                // Save previous section if any
                 if let Some(section) = current_section.take()
                     && !section.lines.is_empty()
                 {
@@ -80,7 +77,6 @@ impl ChordProParser {
                 continue;
             }
 
-            // Check for section end
             if SECTION_END_RE.is_match(trimmed) {
                 if let Some(section) = current_section.take()
                     && !section.lines.is_empty()
@@ -90,7 +86,6 @@ impl ChordProParser {
                 continue;
             }
 
-            // Parse directives
             if let Some(caps) = DIRECTIVE_RE.captures(trimmed) {
                 let directive = caps[1].to_lowercase();
                 let value = caps.get(2).map(|m| m.as_str().trim().to_string());
@@ -106,9 +101,7 @@ impl ChordProParser {
                     }
                     "time" => song.time_signature = value,
                     "capo" => song.capo = value.and_then(|v| v.parse().ok()),
-                    // Section shortcuts
                     "c" | "comment" => {
-                        // Comments are displayed as-is
                         if let Some(ref mut section) = current_section
                             && let Some(text) = value
                         {
@@ -123,14 +116,11 @@ impl ChordProParser {
                 continue;
             }
 
-            // Parse line with chords
             let song_line = Self::parse_line(trimmed);
 
-            // Add to current section or create implicit verse
             if let Some(ref mut section) = current_section {
                 section.lines.push(song_line);
             } else if !song_line.text.is_empty() || !song_line.chords.is_empty() {
-                // Create implicit verse section for content outside sections
                 current_section = Some(SongSection {
                     section_type: SongSectionType::Verse,
                     label:        None,
@@ -139,7 +129,6 @@ impl ChordProParser {
             }
         }
 
-        // Save last section
         if let Some(section) = current_section
             && !section.lines.is_empty()
         {
@@ -158,10 +147,8 @@ impl ChordProParser {
         for caps in CHORD_RE.captures_iter(line) {
             let m = caps.get(0).unwrap();
 
-            // Add text before chord
             text.push_str(&line[last_end..m.start()]);
 
-            // Parse chord
             let chord_str = &caps[1];
             if let Some(chord) = Chord::parse(chord_str) {
                 chords.push(PositionedChord {
@@ -173,7 +160,6 @@ impl ChordProParser {
             last_end = m.end();
         }
 
-        // Add remaining text
         text.push_str(&line[last_end..]);
 
         SongLine {
@@ -205,9 +191,7 @@ impl ChordProParser {
         for line in content.lines() {
             let trimmed = line.trim();
 
-            // Skip directives
             if trimmed.starts_with('{') && trimmed.ends_with('}') {
-                // But keep comments as text
                 if let Some(caps) = DIRECTIVE_RE.captures(trimmed) {
                     let directive = caps[1].to_lowercase();
                     if (directive == "c" || directive == "comment")
@@ -220,7 +204,6 @@ impl ChordProParser {
                 continue;
             }
 
-            // Remove chords
             let plain = CHORD_RE.replace_all(trimmed, "");
             let plain = plain.trim();
 
@@ -238,12 +221,10 @@ impl ChordProParser {
         for line in content.lines() {
             let trimmed = line.trim();
 
-            // Skip empty lines and directives
             if trimmed.is_empty() || (trimmed.starts_with('{') && trimmed.ends_with('}')) {
                 continue;
             }
 
-            // Remove chords and return
             let plain = CHORD_RE.replace_all(trimmed, "");
             let plain = plain.trim();
 
@@ -309,13 +290,11 @@ Was [G]blind but [C]now I [G]see
         assert_eq!(song.key, Some("G".to_string()));
         assert_eq!(song.sections.len(), 2);
 
-        // Check verse
         let verse = &song.sections[0];
         assert_eq!(verse.section_type, SongSectionType::Verse);
         assert_eq!(verse.label, Some("1".to_string()));
         assert_eq!(verse.lines.len(), 2);
 
-        // Check first line chords
         let first_line = &verse.lines[0];
         assert_eq!(first_line.text, "Amazing grace, how sweet the sound");
         assert_eq!(first_line.chords.len(), 4);
